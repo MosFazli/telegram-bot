@@ -1,97 +1,69 @@
-import telebot
-import csv
-import datetime
+"""
+Simple Bot to reply to Telegram messages taken from the python-telegram-bot examples.
+Deployed using heroku.
+Author: liuhh02 https://medium.com/@liuhh02
+"""
 
-bot = telebot.TeleBot("5441208078:AAEBrAHziJy8VZC8R1D7tQOZs9EoAXbwkSs")
+import logging
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+import os
+PORT = int(os.environ.get('PORT', 5000))
 
-tempArray = []
-membersClass = []
+# Enable logging
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO)
 
-today = datetime.datetime.today()
-day = datetime.datetime.today().weekday()
+logger = logging.getLogger(__name__)
+TOKEN = '5441208078:AAEBrAHziJy8VZC8R1D7tQOZs9EoAXbwkSs'
 
-with open("Saturday.csv", encoding="utf8") as csvfile:
-    csvreader = csv.reader(csvfile, delimiter=",")
+# Define a few command handlers. These usually take the two arguments update and
+# context. Error handlers also receive the raised TelegramError object in error.
+def start(update, context):
+    """Send a message when the command /start is issued."""
+    update.message.reply_text('Hi!')
 
-    for row in csvreader:
-        tempRow = []
-        tempRow.append(row[0])
-        tempRow.append(row[1])
-        tempRow.append(row[2])
-        tempRow.append(row[3])
-        tempRow.append(row[4])
-        tempRow.append(row[5])
-        tempRow.append(row[6])
-        tempArray.append(tempRow)
+def help(update, context):
+    """Send a message when the command /help is issued."""
+    update.message.reply_text('Help!')
 
+def echo(update, context):
+    """Echo the user message."""
+    update.message.reply_text(update.message.text)
 
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-    print(str(message.from_user.id) + " " + message.from_user.full_name + " => " + message.text)
-    bot.reply_to(message, "سلام، به بات تلگرامی دستیار دانشجویی دانشگاه صنعتی شاهرود خوش آمدید")
+def error(update, context):
+    """Log Errors caused by Updates."""
+    logger.warning('Update "%s" caused error "%s"', update, context.error)
 
+def main():
+    """Start the bot."""
+    # Create the Updater and pass it your bot's token.
+    # Make sure to set use_context=True to use the new context based callbacks
+    # Post version 12 this will no longer be necessary
+    updater = Updater(TOKEN, use_context=True)
 
-@bot.message_handler(commands=['plan'])
-def send_plan(message):
-    print(str(message.from_user.id) + " " + message.from_user.full_name + " => " + message.text)
+    # Get the dispatcher to register handlers
+    dp = updater.dispatcher
 
-    saturay_plan = []
+    # on different commands - answer in Telegram
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CommandHandler("help", help))
 
-    if(day == 6):
-        for i in tempArray:
-            if(i[5] == "يك شنبه"):
-                saturay_plan.append(i)
+    # on noncommand i.e message - echo the message on Telegram
+    dp.add_handler(MessageHandler(Filters.text, echo))
 
-    if (day == 7):
-        for i in tempArray:
-            if (i[5] == "دو شنبه"):
-                saturay_plan.append(i)
+    # log all errors
+    dp.add_error_handler(error)
 
-    if (day == 1):
-        for i in tempArray:
-            if (i[5] == "سه شنبه"):
-                saturay_plan.append(i)
+    # Start the Bot
+    updater.start_webhook(listen="0.0.0.0",
+                          port=int(PORT),
+                          url_path=TOKEN)
+    updater.bot.setWebhook('https://shahroodu.herokuapp.com/' + TOKEN)
 
-    if (day == 2):
-        for i in tempArray:
-            if (i[5] == "چهار شنبه"):
-                saturay_plan.append(i)
+    # Run the bot until you press Ctrl-C or the process receives SIGINT,
+    # SIGTERM or SIGABRT. This should be used most of the time, since
+    # start_polling() is non-blocking and will stop the bot gracefully.
+    updater.idle()
 
-    if (day == 3):
-        for i in tempArray:
-            if (i[5] == "پنج شنبه"):
-                saturay_plan.append(i)
-
-    if (day == 4):
-        for i in tempArray:
-            if (i[5] == "جمعه"):
-                saturay_plan.append(i)
-
-    if (day == 5):
-        for i in tempArray:
-            if (i[5] == "شنبه"):
-                saturay_plan.append(i)
-
-    tempString = []
-    for i in saturay_plan:
-        tempString.append(i[2] + " - " + i[3] + " - " + i[5] +  " - " + i[6])
-    for i in tempString:
-        bot.reply_to(message, i)
-
-
-
-@bot.message_handler(commands=['add'])
-def add_class(message):
-    print(str(message.from_user.id) + " " + message.from_user.full_name + " => " + message.text)
-    tempString = message.text.replace("/add ", "")
-    tempClass = tempString
-    membersClass.append(tempClass)
-    bot.reply_to(message, "کلاس جدید برای شما ثبت شد")
-
-
-
-@bot.message_handler(func=lambda message: True)
-def echo_all(message):
-    print(message.from_user.full_name + " => " + message.text)
-
-bot.infinity_polling()
+if __name__ == '__main__':
+    main()
